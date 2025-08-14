@@ -79,3 +79,47 @@ export async function logout(req, res) {
   res.clearCookie("jwt");
   res.status(200).json({ success: true, message: "Logout Successgul" });
 }
+
+export async function onboard(req, res) {
+  try {
+    const userId = req.user._id;
+    const { fullName, bio, nativeLanguage, learningLanguage, location } =
+      req.body;
+    if (
+      !fullName ||
+      !bio ||
+      !nativeLanguage ||
+      !learningLanguage ||
+      !location
+    ) {
+      return res.status(400).json({
+        message: "All fields are required",
+        missingFields: [
+          !fullName && "fullName",
+          !bio && "bio",
+          !nativeLanguage && "nativeLanguage",
+          !learningLanguage && "leanringLanguage",
+          !location && "Location",
+        ].filter(Boolean),
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        ...req.body,
+        isOnboarded: true,
+      },
+      { new: true }
+    );
+
+    if (!updatedUser)
+      return res.status(404).json({ message: "User not found" });
+
+    //update userinfo in streamer
+    res.status(200).json({ success: true, user: updatedUser });
+  } catch (error) {
+    console.error("Onboarding error : ", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
