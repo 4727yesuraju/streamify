@@ -1,5 +1,4 @@
 import User from "../models/User.js";
-import jwt from "jsonwebtoken";
 import { generateTokenAndSetCookie } from "../utils/generateTokenAndSetCookie.js";
 import { upsertStreamUser } from "../lib/stream.js";
 
@@ -77,7 +76,7 @@ export async function login(req, res) {
 }
 export async function logout(req, res) {
   res.clearCookie("jwt");
-  res.status(200).json({ success: true, message: "Logout Successgul" });
+  res.status(200).json({ success: true, message: "Logout Successful" });
 }
 
 export async function onboard(req, res) {
@@ -104,19 +103,37 @@ export async function onboard(req, res) {
       });
     }
 
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      {
-        ...req.body,
-        isOnboarded: true,
-      },
-      { new: true }
-    );
+    let updatedUser = null;
+    try {
+      updatedUser = await User.findByIdAndUpdate(
+        userId,
+        {
+          ...req.body,
+          isOnboarded: true,
+        },
+        { new: true }
+      );
+
+      console.log(
+        `Stream User updated after onboarding for ${updatedUser?.fullName}`
+      );
+    } catch (error) {
+      console.log(
+        `Error updating Stream user during onboarding : `,
+        error?.message
+      );
+    }
 
     if (!updatedUser)
       return res.status(404).json({ message: "User not found" });
 
     //update userinfo in streamer
+
+    await upsertStreamUser({
+      id: updatedUser?._id?.toString(),
+      name: updatedUser?.fullName,
+      image: updatedUser?.profilePic || " ",
+    });
     res.status(200).json({ success: true, user: updatedUser });
   } catch (error) {
     console.error("Onboarding error : ", error);
